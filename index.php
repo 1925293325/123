@@ -480,6 +480,16 @@ img{-webkit-touch-callout:none!important;-webkit-user-select:none!important;poin
 .search-hidden{display:none!important}
 .search-highlight{box-shadow:0 0 0 2px var(--primary);background:#f0f7ff!important}
 ::-webkit-scrollbar{width:0;height:0}
+
+/* Tool Viewer Overlay */
+.tool-viewer-overlay{position:fixed;inset:0;background:#fff;z-index:1000;display:none;flex-direction:column}
+.tool-viewer-overlay.show{display:flex}
+.tool-viewer-header{position:sticky;top:0;z-index:10;height:56px;background:#FFFFFF;border-bottom:1px solid #e8e8e8;display:flex;align-items:center;padding:0 16px;gap:12px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.tool-viewer-btn{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:transparent;transition:all .15s;color:#333}
+.tool-viewer-btn:active{background:#f0f2f5;transform:scale(.96)}
+.tool-viewer-btn svg{width:20px;height:20px}
+.tool-viewer-title{flex:1;text-align:center;font-size:16px;font-weight:700;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#toolViewerFrame{flex:1;width:100%;border:none;background:#fff}
 </style>
 </head>
 <body>
@@ -795,6 +805,20 @@ img{-webkit-touch-callout:none!important;-webkit-user-select:none!important;poin
 </button>
 </nav>
 
+<!-- Tool Viewer Overlay -->
+<div class="tool-viewer-overlay" id="toolViewerOverlay">
+<div class="tool-viewer-header">
+<div class="tool-viewer-btn" onclick="closeToolViewer()">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+</div>
+<div class="tool-viewer-title" id="toolViewerTitle">工具名称</div>
+<div class="tool-viewer-btn" onclick="openInBrowser()">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+</div>
+</div>
+<iframe id="toolViewerFrame" src="" frameborder="0"></iframe>
+</div>
+
 <script>
 // ===== Config =====
 const catColors={hot:'#4099FF',feature:'#52c41a',query:'#4099FF',smart:'#4099FF',doc:'#4099FF',image:'#4099FF',text:'#4099FF',encode:'#4099FF',calc:'#4099FF',life:'#4099FF',tool:'#4099FF',security:'#4099FF',random:'#4099FF',color:'#4099FF',convert:'#4099FF',device:'#4099FF',media:'#4099FF',dev:'#4099FF',other:'#999999'};
@@ -973,7 +997,7 @@ function buildHome(){
             const id=t.type+'-'+t.dir;
             const url=t.type==='module'?t.url:'generator/'+t.dir+'/';
             const iconEl=t.icon&&t.icon.startsWith('<')?`<span style="display:flex;align-items:center;justify-content:center;width:100%;height:100%">${t.icon}</span>`:(t.icon||'⚙️');
-            html+=`<div class="tool-pill" data-id="${id}" data-name="${esc(t.name)}" data-desc="${esc(t.desc||'')}" onclick="openTool('${url}')" ontouchstart="startLongPress(event,'${id}','${esc(t.name)}','${esc(t.desc||'')}','${url}')" ontouchend="cancelLongPress()" ontouchmove="cancelLongPress()"><div class="tool-pill-icon" style="background:${col}12;color:${col}">${iconEl}</div><div class="tool-pill-name">${t.name}</div></div>`;
+            html+=`<div class="tool-pill" data-id="${id}" data-name="${esc(t.name)}" data-desc="${esc(t.desc||'')}" onclick="openTool('${url}','${esc(t.name)}')" ontouchstart="startLongPress(event,'${id}','${esc(t.name)}','${esc(t.desc||'')}','${url}')" ontouchend="cancelLongPress()" ontouchmove="cancelLongPress()"><div class="tool-pill-icon" style="background:${col}12;color:${col}">${iconEl}</div><div class="tool-pill-name">${t.name}</div></div>`;
         });
         html+=`</div></div></div>`;
     });
@@ -998,7 +1022,23 @@ function startLongPress(e,id,name,desc,url){
     longPressTimer=setTimeout(()=>{openFavSheet(id,name,desc,url)},500)
 }
 function cancelLongPress(){if(longPressTimer){clearTimeout(longPressTimer);longPressTimer=null}}
-function openTool(url){window.location.href=url}
+
+// ===== Tool Viewer =====
+let currentToolUrl='';
+function openTool(url,name){
+    currentToolUrl=url;
+    document.getElementById('toolViewerTitle').textContent=name||'工具';
+    document.getElementById('toolViewerFrame').src=url;
+    document.getElementById('toolViewerOverlay').classList.add('show');
+}
+function closeToolViewer(){
+    document.getElementById('toolViewerOverlay').classList.remove('show');
+    document.getElementById('toolViewerFrame').src='';
+    currentToolUrl='';
+}
+function openInBrowser(){
+    if(currentToolUrl){window.open(currentToolUrl,'_blank')}
+}
 
 // ===== Add Tool / Feature (POST to wendang API or PHP) =====
 let currentToolTargetDir='generator';
@@ -1146,7 +1186,7 @@ function renderFavs(){
     });
     if(!filtered.length){c.innerHTML='<div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg><div class="text">暂无收藏</div></div>';return}
     let html='<div class="site-content" style="padding:10px 12px">';
-    filtered.forEach(f=>{const col=catColors[f.type]||'#4a6cf7';html+=`<div class="site-item" data-f="${esc(f.name)}" ontouchstart="startLongPressFav(event,'${f.id}','${esc(f.name)}','${esc(f.desc||'')}','${esc(f.url)}')" ontouchend="cancelLongPress()" ontouchmove="cancelLongPress()" style="cursor:pointer" onclick="openTool('${esc(f.url)}')"><div class="favicon" style="background:${col}12;color:${col}">⭐</div><div class="info"><div class="name">${f.name}</div><div class="sub">${f.desc||f.url||''}</div></div></div>`});
+    filtered.forEach(f=>{const col=catColors[f.type]||'#4a6cf7';html+=`<div class="site-item" data-f="${esc(f.name)}" ontouchstart="startLongPressFav(event,'${f.id}','${esc(f.name)}','${esc(f.desc||'')}','${esc(f.url)}')" ontouchend="cancelLongPress()" ontouchmove="cancelLongPress()" style="cursor:pointer" onclick="openTool('${esc(f.url)}','${esc(f.name)}')"><div class="favicon" style="background:${col}12;color:${col}">⭐</div><div class="info"><div class="name">${f.name}</div><div class="sub">${f.desc||f.url||''}</div></div></div>`});
     html+='</div>';c.innerHTML=html;
 }
 function startLongPressFav(e,id,name,desc,url){longPressTimer=setTimeout(()=>{currentSheetItem={id,name,desc,url};document.getElementById('sheetTitle').textContent=name;document.getElementById('sheetDesc').textContent='长按取消收藏';document.getElementById('sheetButtons').innerHTML=`<button class="sheet-btn sheet-btn-danger" onclick="removeFavDirect()">取消收藏</button>`;document.getElementById('sheetOverlay').classList.add('show');document.getElementById('bottomSheet').classList.add('show')},500)}
@@ -1239,7 +1279,7 @@ function renderFeatures(){
                 iconEl = `<img class="fav-letter" src="${letterImg}" alt=""><img src="${favUrl}" loading="lazy" decoding="async" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .3s;z-index:2" onload="this.style.opacity='1';this.previousElementSibling.style.display='none'" onerror="this.style.display='none'">`;
             }
 
-            contentHtml+=`<div class="site-item" data-f="${(t.name+' '+t.desc).toLowerCase()}" ontouchstart="startLongPressFeature(event,'${id}','${esc(t.name)}','${esc(t.desc||'')}','${esc(url)}')" ontouchend="cancelLongPress()" ontouchmove="cancelLongPress()" style="cursor:pointer" onclick="recordClick('${esc(url)}','feature');openTool('${esc(url)}')"><div class="favicon" style="position:relative;overflow:hidden">${iconEl}</div><div class="info"><div class="name">${formatSiteName(t.name)}</div><div class="click-count">${clickText}</div></div></div>`;
+            contentHtml+=`<div class="site-item" data-f="${(t.name+' '+t.desc).toLowerCase()}" ontouchstart="startLongPressFeature(event,'${id}','${esc(t.name)}','${esc(t.desc||'')}','${esc(url)}')" ontouchend="cancelLongPress()" ontouchmove="cancelLongPress()" style="cursor:pointer" onclick="recordClick('${esc(url)}','feature');openTool('${esc(url)}','${esc(t.name)}')"><div class="favicon" style="position:relative;overflow:hidden">${iconEl}</div><div class="info"><div class="name">${formatSiteName(t.name)}</div><div class="click-count">${clickText}</div></div></div>`;
         });
     }
     document.getElementById('featureContent').innerHTML=contentHtml;
@@ -1346,7 +1386,7 @@ function renderSiteLayout(){
                 faviconHtml = `<img class="fav-letter" src="${letterImg}" alt=""><img src="${favUrl}" loading="lazy" decoding="async" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .3s;z-index:2" onload="this.style.opacity='1';this.previousElementSibling.style.display='none'" onerror="this.style.display='none'">`;
             }
 
-            contentHtml+=`<a href="${s.url}" target="_blank" class="site-item" data-s="${(s.title+' '+s.desc+' '+s.url).toLowerCase()}" onclick="recordClick('${esc(s.url)}','site')" ontouchstart="startLongPressSite(event,${realIdx})" ontouchend="cancelLongPress()" ontouchmove="cancelLongPress()"><div class="favicon" style="position:relative;overflow:hidden">${faviconHtml}</div><div class="info"><div class="name">${formatSiteName(s.title)}</div><div class="click-count">${clickText}</div></div></a>`;
+            contentHtml+=`<div class="site-item" data-s="${(s.title+' '+s.desc+' '+s.url).toLowerCase()}" onclick="recordClick('${esc(s.url)}','site');openTool('${esc(s.url)}','${esc(s.title)}')" ontouchstart="startLongPressSite(event,${realIdx})" ontouchend="cancelLongPress()" ontouchmove="cancelLongPress()" style="cursor:pointer"><div class="favicon" style="position:relative;overflow:hidden">${faviconHtml}</div><div class="info"><div class="name">${formatSiteName(s.title)}</div><div class="click-count">${clickText}</div></div></div>`;
         });
     }
     document.getElementById('siteContent').innerHTML=contentHtml;
